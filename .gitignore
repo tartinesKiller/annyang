@@ -4,3 +4,4 @@ npm-debug.log
 .grunt
 .DS_Store
 test/coverage/
+package-lock.json

@@ -120,38 +120,28 @@
 
   var parseResults = function(results) {
     invokeCallbacks(callbacks.result, results);
-    var commandText;
-    // go over each of the 5 results and alternative results received (we have set maxAlternatives to 5 above)
-    for (let i = 0; i < results.length; i++) {
-      // the text recognized
-      commandText = results[i].trim();
-      if (debugState) {
-        logMessage('Speech recognized: %c' + commandText, debugStyle);
-      }
+    if (debugState) {
+      logMessage("Heard speeches are: %c"+results.join(", "), debugStyle);
+    }
 
-      // try and match the recognized text to one of the commands on the list
-      for (let j = 0, l = commandsList.length; j < l; j++) {
-        var currentCommand = commandsList[j];
-        var result = currentCommand.command.exec(commandText);
+    // instead of trying first 5 phrases on each of the commands, which can be problematic if we have a sort of "catch-all" command,
+    // let's try - in order - each commands with the 5 phrases
+    for (const command of commandsList) {
+      if (debugState) {
+        logMessage("Trying command %c"+command.originalPhrase);
+      }
+      for (const heardPhrase of results.map(o => o.trim())) {
+        const result = command.command.exec(heardPhrase);
         if (result) {
-          var parameters = result.slice(1);
+          const params = result.slice(1);
           if (debugState) {
-            logMessage(
-              'command matched: %c' + currentCommand.originalPhrase,
-              debugStyle
-            );
-            if (parameters.length) {
-              logMessage('with parameters', parameters);
+            logMessage('command matched: %c'+command.originalPhrase, debugStyle);
+            if (params.length) {
+                logMessage('with parameters', params);
             }
           }
-          // execute the matched command
-          currentCommand.callback.apply(this, parameters);
-          invokeCallbacks(
-            callbacks.resultMatch,
-            commandText,
-            currentCommand.originalPhrase,
-            results
-          );
+          command.callback.apply(this, params);
+          invokeCallbacks(callbacks.resultMatch, heardPhrase, command.originalPhrase, results);
           return;
         }
       }

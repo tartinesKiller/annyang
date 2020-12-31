@@ -120,34 +120,77 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
   var parseResults = function parseResults(results) {
     invokeCallbacks(callbacks.result, results);
-    var commandText;
-    // go over each of the 5 results and alternative results received (we have set maxAlternatives to 5 above)
-    for (var i = 0; i < results.length; i++) {
-      // the text recognized
-      commandText = results[i].trim();
-      if (debugState) {
-        logMessage('Speech recognized: %c' + commandText, debugStyle);
-      }
+    if (debugState) {
+      logMessage("Heard speeches are: %c" + results.join(", "), debugStyle);
+    }
 
-      // try and match recognized text to one of the commands on the list
-      for (var j = 0, l = commandsList.length; j < l; j++) {
-        var currentCommand = commandsList[j];
-        var result = currentCommand.command.exec(commandText);
-        if (result) {
-          var parameters = result.slice(1);
-          if (debugState) {
-            logMessage('command matched: %c' + currentCommand.originalPhrase, debugStyle);
-            if (parameters.length) {
-              logMessage('with parameters', parameters);
+    // instead of trying first 5 phrases on each of the commands, which can be problematic if we have a sort of "catch-all" command,
+    // let's try - in order - each commands with the 5 phrases
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = commandsList[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var command = _step.value;
+
+        if (debugState) {
+          logMessage("Trying command %c" + command.originalPhrase);
+        }
+        var _iteratorNormalCompletion2 = true;
+        var _didIteratorError2 = false;
+        var _iteratorError2 = undefined;
+
+        try {
+          for (var _iterator2 = results.map(function (o) {
+            return o.trim();
+          })[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+            var heardPhrase = _step2.value;
+
+            var result = command.command.exec(heardPhrase);
+            if (result) {
+              var params = result.slice(1);
+              if (debugState) {
+                logMessage('command matched: %c' + command.originalPhrase, debugStyle);
+                if (params.length) {
+                  logMessage('with parameters', params);
+                }
+              }
+              command.callback.apply(this, params);
+              invokeCallbacks(callbacks.resultMatch, heardPhrase, command.originalPhrase, results);
+              return;
             }
           }
-          // execute the matched command
-          currentCommand.callback.apply(this, parameters);
-          invokeCallbacks(callbacks.resultMatch, commandText, currentCommand.originalPhrase, results);
-          return;
+        } catch (err) {
+          _didIteratorError2 = true;
+          _iteratorError2 = err;
+        } finally {
+          try {
+            if (!_iteratorNormalCompletion2 && _iterator2.return) {
+              _iterator2.return();
+            }
+          } finally {
+            if (_didIteratorError2) {
+              throw _iteratorError2;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator.return) {
+          _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
         }
       }
     }
+
     invokeCallbacks(callbacks.resultNoMatch, results);
   };
 
@@ -162,10 +205,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      *
      * annyang.addCommands(commands);
      * annyang.addCommands(commands2);
-     * // annyang will now listen to all three commands
+     * // annyang will now listen for all three commands
      * ````
      *
-     * @param {Object} commands - Commands that annyang should listen to
+     * @param {Object} commands - Commands that annyang should listen for
      * @method addCommands
      * @see [Commands Object](#commands-object)
      */
@@ -195,7 +238,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
     /**
      * Start listening.
-     * It's a good idea to call this after adding some commands first, but not mandatory.
+     * It's a good idea to call this after adding some commands first (but not mandatory)
      *
      * Receives an optional options object which supports the following options:
      *
@@ -269,7 +312,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     },
 
     /**
-     * Resumes listening and restore command callback execution when a result matches.
+     * Resumes listening and restore command callback execution when a command is matched.
      * If SpeechRecognition was aborted (stopped), start it.
      *
      * @method resume
